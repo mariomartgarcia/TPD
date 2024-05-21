@@ -16,7 +16,7 @@ This repository contains the code for the paper _"Teacher privileged distillatio
 ## Content
 
 - **code:**
-  - `lrplus.py`. Main file with LRIT+ and LR+ algorithms.
+  - `lrplus.py`. Main file with TPD learning framework.
 
 ## Contact
 
