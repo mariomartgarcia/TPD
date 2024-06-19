@@ -16,7 +16,7 @@ This repository contains the code for the paper _"Teacher privileged distillatio
 ## Content
 
 - **code:**
-  - `tpd.py`. Main file with TPD learning framework.
+  - `TPD_framework.py`. Main file with TPD learning framework.
 
 ## Contact
 
