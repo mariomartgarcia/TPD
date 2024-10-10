@@ -7,9 +7,9 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn import svm
 
 
-    
 
-from keras.losses import categorical_crossentropy
+
+#from tensorflow.keras.losses import categorical_crossentropy
 #=============================================================================
                         #LRKD+ | SCIPY | SOLVER: 'LBFGS'#
 #=============================================================================
