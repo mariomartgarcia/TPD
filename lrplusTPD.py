@@ -1,12 +1,6 @@
 import scipy.optimize as so
 import numpy as np
-import cvxpy as cp
 from sklearn.metrics import log_loss
-import pandas as pd
-from sklearn.kernel_ridge import KernelRidge
-from sklearn import svm
-
-
 
 
 #from tensorflow.keras.losses import categorical_crossentropy
