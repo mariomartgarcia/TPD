@@ -160,8 +160,8 @@ name2, model2, lower2, upper2, opti2, gainer2 = [], [], [], [], [], []
 c_media = []
 
 
-text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4']
-dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4()]
+text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4',  'mnist_r', 'fruit', 'mnist_g' ]
+dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4(), dat.mnist_r(), dat.fruit(), dat.mnist_g()]
 
 #text  =  ['phoneme', 'mozilla4']
 #dataset = [  dat.phoneme(), dat.mozilla4()]
@@ -274,7 +274,7 @@ for index, datt in enumerate(dataset):
             #----------------------------------------------------
             
             #TPD
-            tpd = priv.TPDGD(l = 1, T = 1)
+            tpd = priv.TPD(l = 1, T = 1)
             tpd.fit(X_train, X_train_reg, np.array(y_train), omega, beta, c)
             pre_p = tpd.predict(pd.DataFrame(X_test_reg))
             acc_tpd.append(1-accuracy_score(y_test, pre_p))
@@ -331,7 +331,7 @@ for index, datt in enumerate(dataset):
     def LUPI_gain(ub, lb, x):
         return ((x - lb) / (ub - lb) )*100
     lg_pfd = np.round(LUPI_gain(np.mean(acc_tpr), np.mean(acc_lb), np.mean(acc_pfd)), 3)
-    lg_gd = np.round(LUPI_gain(np.mean(acc_tpr), np.mean(acc_lb), np.mean(acc_gd)), 3)
+    lg_gd = np.round(LUPI_gain(np.mean(acc_tp), np.mean(acc_lb), np.mean(acc_gd)), 3)
     lg_tpd = np.round(LUPI_gain(np.mean(acc_tpr), np.mean(acc_lb), np.mean(acc_tpd)), 3)
 
     off_lr = { 'Dataset': t,

@@ -139,7 +139,7 @@ for ind in args.dataset:
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification( 1, lay_clas, 'relu', dropout = drp, regularization = True, l2 = 1)   
+            model =  mo.nn_binary_clasification( 1, lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -154,7 +154,7 @@ for ind in args.dataset:
             #UPPER (REGULAR + PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification( X_train.shape[1], lay_clas, 'relu', dropout = drp, regularization = True, l2 = 1)     
+            model =  mo.nn_binary_clasification( X_train.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -173,7 +173,7 @@ for ind in args.dataset:
             #Create the model 
             
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = True, l2 = 1)  
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)  
             model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
             mo.fit_model(model, X_trainr, y_train, epo, bs, vs, es, pat)
             #Measure test error
