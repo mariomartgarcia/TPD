@@ -153,7 +153,7 @@ def regularization(X, y, pi_features, l_val, t_val, teacher_full = True, sw = Fa
 #--------------------
 
 
-ran= np.random.randint(1000, size = 1)
+ran= np.random.randint(1000, size = 30)
 
 name, model, lower, upper, opti, gainer = [], [], [], [], [], []
 name2, model2, lower2, upper2, opti2, gainer2 = [], [], [], [], [], []

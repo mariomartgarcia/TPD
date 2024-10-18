@@ -89,6 +89,7 @@ n_iter  = args.iter
 ran = np.random.randint(1000, size = n_iter)
 
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset
+beta_val = [0.5, 1, 2, 5, 10, 20, 50]
 
 
 
@@ -112,7 +113,7 @@ for ind in args.dataset:
     
     #Create a list to save the results 
     err_up, err_b = [[] for i in range(2)]
-    err_up_priv, err_gd, err_pfd, err_tpd = [[] for i in range(4)]
+    err_up_priv, err_gd, err_pfd, err_tpd, err_bci = [[] for i in range(5)]
     #For each fold (k is the random seed of each fold)
     for k in ran:
         #Create a dictionary with all the fold partitions
@@ -238,16 +239,37 @@ for ind in args.dataset:
             yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_TPD(temperature, beta), optimizer='adam', metrics=['accuracy'])
-   
-            #Fit the model
-            #mo.fit_model(model, X_trainr, yy_TPD, epo, bs, vs, es, pat)
-            model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
             
+            err_abla = []
+            for b in beta_val:
+                model.compile(loss= ut.loss_TPD(temperature, b), optimizer='adam', metrics=['accuracy'])
+                #Fit the model
+                model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                #Measure test error
+                y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
+                err_abla.append(1-accuracy_score(y_test, y_pre))
+
+            if len(err_tpd) == 0:
+                err_tpd = err_abla
+            else:
+                err_tpd = np.vstack([err_tpd, err_abla])
+
+
+        
+            
+            #BCI
+            ###-----------------------------------------------------------------
+
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)   
+
+            model.compile(loss= ut.bce_inv, optimizer='adam', metrics=['accuracy'])
+            #Fit the model
+            model.fit(X_trainr, np.ravel(y_proba_tr), epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-            err_tpd.append(1-accuracy_score(y_test, y_pre))
+            err_bci.append(1-accuracy_score(y_test, y_pre))
             
            
             tf.keras.backend.clear_session()
@@ -258,12 +280,13 @@ for ind in args.dataset:
            'err_b':  np.round(np.mean(err_b), 4),
            'err_GD': np.round(np.mean(err_gd), 4),
            'err_PFD': np.round(np.mean(err_pfd), 4),
-           'err_TPD': np.round(np.mean(err_tpd), 4),
-           'LUPIGD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_gd), 4)),
-           'LUPIPFD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_pfd), 4)),
-           'LUPITPD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_tpd), 4))
-           }   
+           'err_BCI': np.round(np.mean(err_bci), 4)          
+            }   
     
+    for q, k in enumerate(beta_val):
+        off['beta'+str(k)] =  np.mean(err_tpd, axis = 0)[q]
+
+
     df1 = pd.DataFrame(off, index = [0])
         
     dff  = pd.concat([dff, df1]).reset_index(drop = True)
@@ -273,7 +296,7 @@ v = '_'.join(args.dataset)
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-dff.to_csv('imi0.5' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
+dff.to_csv('abla_' + v +  '_' + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
     
         
 

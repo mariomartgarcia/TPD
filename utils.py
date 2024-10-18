@@ -116,7 +116,7 @@ def loss_GD(T, l):
         y_pr = 1 / (1 + tf.exp(-ft))
         #tf.print(y_pr)
         d1 = tf.keras.losses.BinaryCrossentropy()(y_tr, y_pred)
-        d2 = tf.keras.losses.BinaryCrossentropy()(y_pr +1e-6, y_pred + 1e-6)
+        d2 = tf.keras.losses.BinaryCrossentropy()(y_pr, y_pred)
         #tf.print(d2)
         #No puedo Categorical por el single layer del output y_pred
         return (1-l)*d1 + l*d2
@@ -138,4 +138,8 @@ def loss_TPD(T, beta):
         return tf.reduce_mean(tf.math.multiply(d,bce_inst) - tf.math.multiply(1-d, bce_inst)) 
     return loss
 
+
+def bce_inv(y_true, y_pred):
+    bcei = tf.keras.losses.BinaryCrossentropy()(y_pred, y_true)
+    return bcei
 
