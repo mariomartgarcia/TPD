@@ -41,7 +41,7 @@ lay_reg  = []      #Layers for the regressor
 lay_clas = []      #Layers for the classifier
 
 drp = False     #Dropout False
-epo = 500     #Epochs 100
+epo = 1000     #Epochs 100
 bs = 32       #Batch Size 32
 vs = 0.33          #Validation Split
 es = True          #Early Stopping True
@@ -50,14 +50,11 @@ pat = 20           #Patience
 temperature = 1    #Temperature privileged distillation algorithms
 imitation = 1      #Imitation parameters
 beta = 1           #Weight od misclassifications TPD
-ft = true
 
-#Define general parameters first of the privileged model
-alpha = 0.3 #uncertainty threshold 0.3
-n_samples = 1  #number of samplings of the privileged feature (size of the ensemble) 100
+
 
 # Determines the number of iterations of the k-fold CV
-n_iter  = 5
+n_iter  = 1
 ran = np.random.randint(1000, size = n_iter)
 
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset

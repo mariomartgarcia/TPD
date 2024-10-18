@@ -153,15 +153,15 @@ def regularization(X, y, pi_features, l_val, t_val, teacher_full = True, sw = Fa
 #--------------------
 
 
-ran= np.random.randint(1000, size = 30)
+ran= np.random.randint(1000, size = 1)
 
 name, model, lower, upper, opti, gainer = [], [], [], [], [], []
 name2, model2, lower2, upper2, opti2, gainer2 = [], [], [], [], [], []
 c_media = []
 
 
-text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4',  'mnist_r', 'fruit', 'mnist_g' ]
-dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4(), dat.mnist_r(), dat.fruit(), dat.mnist_g()]
+text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4' ]
+dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4()]
 
 #text  =  ['phoneme', 'mozilla4']
 #dataset = [  dat.phoneme(), dat.mozilla4()]
@@ -178,6 +178,8 @@ lambda_val = [0.3, 0.6, 1]
 temperature = [1]
 
 df_lr = pd.DataFrame([])
+df_meta = pd.DataFrame([])
+
 
 for index, datt in enumerate(dataset):
     gn = []
@@ -209,6 +211,8 @@ for index, datt in enumerate(dataset):
     acc_lb, acc_tp, acc_tpr = [], [], []
     acc_tpd, acc_pfd, acc_pfds, acc_gd, acc_gds =  [], [], [], [], []
         
+    m_tpd, m_gd, m_pfd = [], [], []
+    lenTEST = []
 
     for k in ran:   
         cv = 5
@@ -276,15 +280,17 @@ for index, datt in enumerate(dataset):
             #TPD
             tpd = priv.TPD(l = 1, T = 1)
             tpd.fit(X_train, X_train_reg, np.array(y_train), omega, beta, c)
-            pre_p = tpd.predict(pd.DataFrame(X_test_reg))
-            acc_tpd.append(1-accuracy_score(y_test, pre_p))
+            pre_tpd = tpd.predict(pd.DataFrame(X_test_reg))
+            acc_tpd.append(1-accuracy_score(y_test, pre_tpd))
+
+        
             
     
             #PFD
             PFD = priv.GD(l = l_pfd, T = 1)
             PFD.fit(X_train, X_train_reg, np.array(y_train), omega, beta)
-            pre_p = PFD.predict(pd.DataFrame(X_test_reg))
-            acc_pfd.append(1-accuracy_score(y_test, pre_p))
+            pre_pfd = PFD.predict(pd.DataFrame(X_test_reg))
+            acc_pfd.append(1-accuracy_score(y_test, pre_pfd))
             
             
             
@@ -314,8 +320,8 @@ for index, datt in enumerate(dataset):
             #GD
             GenD = priv.GD(l = l_gd, T = 1)
             GenD.fit(X_train, X_train_reg, np.array(y_train), omega, beta)
-            pre_p = GenD.predict(pd.DataFrame(X_test_reg))
-            acc_gd.append(1-accuracy_score(y_test, pre_p))
+            pre_gd = GenD.predict(pd.DataFrame(X_test_reg))
+            acc_gd.append(1-accuracy_score(y_test, pre_gd))
             
         
             #LR_BASE
@@ -325,6 +331,37 @@ for index, datt in enumerate(dataset):
             pre = lrb.predict_proba(X_test_reg)[:,1]
             preb = lrb.predict(X_test_reg)
             acc_lb.append(1-accuracy_score(y_test, preb))
+            
+
+            c_tpd = (pre_tpd == y_test)*1
+            c_pfd = (pre_pfd == y_test)*1
+            c_gd = (pre_gd == y_test)*1
+            cb = (preb == y_test)*1
+
+
+            
+            def meta(c1, c2):
+                dd = pd.DataFrame({'base': c1, 'pri': c2})
+
+                ft = np.round(len(dd[(dd['base'] == 0)  &  (dd['pri'] == 1) ])/len(dd)*100,1)
+                tf = np.round(len(dd[(dd['base'] == 1)  &  (dd['pri'] == 0) ])/len(dd)*100,1)
+                tt = np.round(len(dd[(dd['base'] == 1)  &  (dd['pri'] == 1) ])/len(dd)*100,1)
+                ff = np.round(len(dd[(dd['base'] == 0)  &  (dd['pri'] == 0) ])/len(dd)*100,1)
+                return np.array([ft, tf, tt, ff])
+
+            def appen(MET, new):
+                if len(MET) == 0:
+                    MET = new
+                else:
+                    MET = np.vstack([MET, new])
+                return MET
+
+            m_tpd = appen(m_tpd, meta(cb, c_tpd))
+            m_gd = appen(m_gd, meta(cb, c_gd))
+            m_pfd = appen(m_pfd, meta(cb, c_pfd))
+
+            lenTEST.append(len(cb))
+
             
         
     
@@ -357,8 +394,32 @@ for index, datt in enumerate(dataset):
     df_lr = pd.concat([df_lr, d1])
 
 
-df_lr.to_csv('30_iterations.csv')
+
+
+
+    off_meta = { 'Dataset': t,
+              'tpd_01': np.mean(m_tpd, axis = 0)[0],
+              'tpd_10': np.mean(m_tpd, axis = 0)[1],
+              'tpd_11': np.mean(m_tpd, axis = 0)[2],
+              'tpd_00': np.mean(m_tpd, axis = 0)[3],
+              'gd_01': np.mean(m_gd, axis = 0)[0],
+              'gd_10': np.mean(m_gd, axis = 0)[1],
+              'gd_11': np.mean(m_gd, axis = 0)[2],
+              'gd_00': np.mean(m_gd, axis = 0)[3],
+              'pfd_01': np.mean(m_pfd, axis = 0)[0],
+              'pfd_10': np.mean(m_pfd, axis = 0)[1],
+              'pfd_11': np.mean(m_pfd, axis = 0)[2],
+              'pfd_00': np.mean(m_pfd, axis = 0)[3],
+              'lenTest': np.round(np.mean(lenTEST), 3)
+               } 
+
     
+    dm= pd.DataFrame(off_meta, index = [0])
+    df_meta = pd.concat([df_meta, dm])
+
+
+df_lr.to_csv('30_iterations2.csv')
+df_meta.to_csv('feasibility_meta.csv')
     
      
 
