@@ -60,8 +60,8 @@ args = parser.parse_args()
 
 
 # %%
-text    = ['phishing', 'obesity', 'diabetes', 'wm', 'phoneme', 'magic_telescope', 'mozilla'] 
-dataset = [ dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.phoneme(), dat.magictelescope(),  dat.mozilla4()]
+text    = ['phishing', 'obesity', 'diabetes', 'wm', 'phoneme', 'magic_telescope', 'mozilla', 'mnist_r', 'fruit', 'mnist_g'] 
+dataset = [ dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.phoneme(), dat.magictelescope(),  dat.mozilla4(), dat.mnist_r(), dat.fruit(), dat.mnist_g()]
 datasets_dict = dict(zip(text, dataset))
 
 
@@ -99,8 +99,13 @@ for ind in args.dataset:
     t = ind #text of the current dataset
 
     #Retrieve the current dataset and extract the privileged feature
-    X, y = datasets_dict[ind]
-    pi_features = ut.feat_correlation(X,y)
+
+    if t in [ 'mnist_r', 'fruit', 'mnist_g']:
+        X, y, pi_features = datasets_dict[ind]
+        X = X/255
+    else:
+        X, y = datasets_dict[ind]
+        pi_features = ut.feat_correlation(X,y)
 
     X = X.sample(frac = 1)
     ind = X.index
@@ -124,9 +129,10 @@ for ind in args.dataset:
             X_train, y_train, X_test, y_test  = ut.train_test_fold(dr, h)
             
             #Preprocess the data
-            SS = StandardScaler()
-            X_train = pd.DataFrame(SS.fit_transform(X_train), columns = X_train.columns)
-            X_test = pd.DataFrame(SS.transform(X_test), columns = X_train.columns)
+            if t not in ['mnist_r', 'fruit', 'mnist_g']:
+                SS = StandardScaler()
+                X_train = pd.DataFrame(SS.fit_transform(X_train), columns = X_train.columns)
+                X_test = pd.DataFrame(SS.transform(X_test), columns = X_train.columns)
         
             # Get the privileged feature
             pri = X_train[pi_features]
@@ -142,7 +148,7 @@ for ind in args.dataset:
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification( 1, lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
+            model =  mo.nn_binary_clasification(pri.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -199,7 +205,7 @@ for ind in args.dataset:
             yy_GD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr_p)])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
             model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
             
             #Fit the model
@@ -219,7 +225,7 @@ for ind in args.dataset:
             yy_PFD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr)])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
             model.compile(loss= ut.loss_GD(temperature, imitation), optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -237,7 +243,7 @@ for ind in args.dataset:
             delta_i = np.array((y_train == np.round(np.ravel(y_proba_tr)))*1)
             yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
             model.compile(loss= ut.loss_TPD(temperature, beta), optimizer='adam', metrics=['accuracy'])
    
             #Fit the model
@@ -254,15 +260,22 @@ for ind in args.dataset:
     
     #Save the results
     off = {'name' : t,
-           'err_up':np.round(np.mean(err_up), 4),
-           'err_b':  np.round(np.mean(err_b), 4),
-           'err_GD': np.round(np.mean(err_gd), 4),
-           'err_PFD': np.round(np.mean(err_pfd), 4),
-           'err_TPD': np.round(np.mean(err_tpd), 4),
-           'LUPIGD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_gd), 4)),
-           'LUPIPFD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_pfd), 4)),
-           'LUPITPD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_tpd), 4))
-           }   
+           'tp':np.round(np.mean(err_up_priv), 3),
+           'tpr':np.round(np.mean(err_up), 3),
+           'base':  np.round(np.mean(err_b), 3),
+           'GD': np.round(np.mean(err_gd), 3),
+           'PFD': np.round(np.mean(err_pfd), 3),
+           'TPD': np.round(np.mean(err_tpd), 3),
+           'LUPIGD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up_priv), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_gd), 3)),1),
+           'LUPIPFD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_pfd), 3)),1),
+           'LUPITPD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_tpd), 3)),1),
+           'std_tp':np.round(np.std(err_up_priv), 3),
+           'std_tpr':np.round(np.std(err_up), 3),
+           'std_b':  np.round(np.std(err_b), 3),
+           'std_GD': np.round(np.std(err_gd), 3),
+           'std_PFD': np.round(np.std(err_pfd), 3),
+           'std_TPD': np.round(np.std(err_tpd), 3)
+           }    
     
     df1 = pd.DataFrame(off, index = [0])
         

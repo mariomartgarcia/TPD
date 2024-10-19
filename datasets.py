@@ -521,9 +521,9 @@ def parkinsons():
 #--------------------------------------------------------
 #30. MNIST
 def mnist_r():
-    X_28 = pd.read_csv('data/PI/mnist/X_14.csv', index_col = [0])
-    X_5  = pd.read_csv('data/PI/mnist/X_7.csv', index_col = [0])
-    y =  pd.read_csv('data/PI/mnist/y.csv', index_col = [0]).reset_index(drop = True).iloc[:,0]
+    X_28 = pd.read_csv('data/mnist/X_14.csv', index_col = [0])
+    X_5  = pd.read_csv('data/mnist/X_7.csv', index_col = [0])
+    y =  pd.read_csv('data/mnist/y.csv', index_col = [0]).reset_index(drop = True).iloc[:,0]
     X_5.columns = ['p' + str(col) for col in X_5.columns]
     pi_features = X_28.columns 
     
@@ -536,9 +536,9 @@ def mnist_r():
 
 
 def mnist_g():
-    X_28 = pd.read_csv('data/PI/mnist/gX_14.csv', index_col = [0])
-    X_5  = pd.read_csv('data/PI/mnist/gX_14G.csv', index_col = [0])
-    y =  pd.read_csv('data/PI/mnist/gy.csv', index_col = [0]).reset_index(drop = True).iloc[:,0]
+    X_28 = pd.read_csv('data/mnist/gX_14.csv', index_col = [0])
+    X_5  = pd.read_csv('data/mnist/gX_14G.csv', index_col = [0])
+    y =  pd.read_csv('data/mnist/gy.csv', index_col = [0]).reset_index(drop = True).iloc[:,0]
     X_5.columns = ['p' + str(col) for col in X_5.columns]
     pi_features = X_28.columns 
     

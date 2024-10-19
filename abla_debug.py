@@ -31,24 +31,26 @@ import argparse
 
 
 # %%
-text    = ['phishing'] 
+text    = ['obesity'] 
 dataset = [ dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.phoneme(), dat.magictelescope(),  dat.mozilla4()]
 datasets_dict = dict(zip(text, dataset))
 
-
+text    = ['obesity'] 
+dataset = [ dat.obesity(from_csv = True)]
+datasets_dict = dict(zip(text, dataset))
 # NN architectures of the regressor and the classifier
 lay_reg  = []      #Layers for the regressor
 lay_clas = []      #Layers for the classifier
 
 drp = False     #Dropout False
-epo = 1000     #Epochs 100
+epo = 10    #Epochs 100
 bs = 32       #Batch Size 32
 vs = 0.33          #Validation Split
 es = True          #Early Stopping True
 pat = 20           #Patience
 
 temperature = 1    #Temperature privileged distillation algorithms
-imitation = 1      #Imitation parameters
+imitation = 0.5      #Imitation parameters
 beta = 1           #Weight od misclassifications TPD
 
 
@@ -58,6 +60,7 @@ n_iter  = 1
 ran = np.random.randint(1000, size = n_iter)
 
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset
+
 
 
 
@@ -71,12 +74,17 @@ for ind in text:
     X, y = datasets_dict[ind]
     pi_features = ut.feat_correlation(X,y)
 
+    X = X.sample(frac = 1)
+    ind = X.index
+    X = X.reset_index(drop = True)
+    y = y[ind].reset_index(drop = True)
+
     #Number of folds
     cv = 5
     
     #Create a list to save the results 
     err_up, err_b, err1, per1, err2, per2, mae1, mae2= [[] for i in range(8)]
-    err_up_priv, err_gd, err_pfd, err_tpd = [[] for i in range(4)]
+    err_up_priv, err_gd, err_pfd, err_tpd, err_bci = [[] for i in range(5)]
     #For each fold (k is the random seed of each fold)
     for k in ran:
         #Create a dictionary with all the fold partitions
@@ -91,7 +99,7 @@ for ind in text:
             SS = StandardScaler()
             X_train = pd.DataFrame(SS.fit_transform(X_train), columns = X_train.columns)
             X_test = pd.DataFrame(SS.transform(X_test), columns = X_train.columns)
-        
+
             # Get the privileged feature
             pri = X_train[pi_features]
             pri_test = X_test[pi_features]
@@ -139,8 +147,7 @@ for ind in text:
 
             err_up.append(1-accuracy_score(y_test, y_pre_up))
             
-            if ft:
-                weights_up = model.get_weights()
+
 
 
 
@@ -149,15 +156,26 @@ for ind in text:
             
             #Create the model 
             
-            
+            X_trainr = X_trainr.sample(frac = 1)
+            ind = X_trainr.index
+            X_trainr = X_trainr.reset_index(drop = True)
+            y_train = y_train[ind].reset_index(drop = True)
+
+
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)
-            model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
-            mo.fit_model(model, X_trainr, y_train, 1000, bs, vs, False, pat)
+            model.compile(loss='binary_crossentropy', optimizer="sgd", metrics=['accuracy'])
+            mo.fit_model(model, X_trainr, y_train, 1000, 32, 0.33, True, pat)
             #Measure test error
             y_pre_b = np.ravel([np.round(i) for i in model.predict(X_testr)])
 
             err_b.append(1-accuracy_score(y_test, y_pre_b))
             print('B', 1-accuracy_score(y_test, y_pre_b))
+
+
+            lr = LogisticRegression()
+            lr.fit(X_trainr, y_train)
+            pre = lr.predict(X_testr)
+            print(1-accuracy_score(pre, y_test))
 
         
             
@@ -172,7 +190,7 @@ for ind in text:
                                np.ravel(y_proba_tr_p)])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = False)   
-            model.compile(loss= loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
+            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
             
             #Fit the model
             mo.fit_model(model, X_trainr, yy_GD, 1, 32, vs, es, pat)
@@ -208,14 +226,40 @@ for ind in text:
             yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)   
-            model.compile(loss= loss_TPD(temperature, beta), optimizer='adam', metrics=['accuracy'])
-   
-            #Fit the model
-            history = model.fit(X_trainr, yy_TPD, epochs=400, batch_size=128, verbose = 0, validation_split = vs)
+
+            err_abla = []
+
+            #[0.5, 1, 2, 5, 10, 20, 50]
+            for b in [0.5, 1, 2]:
+                model.compile(loss= ut.loss_TPD(temperature, b), optimizer='adam', metrics=['accuracy'])
+                #Fit the model
+                model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                #Measure test error
+                y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
+                err_abla.append(1-accuracy_score(y_test, y_pre))
+
+            if len(err_tpd) == 0:
+                err_tpd = err_abla
+            else:
+                err_tpd = np.vstack([err_tpd, err_abla])
+
+
+        
             
+            #BCI
+            ###-----------------------------------------------------------------
+
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)   
+
+            model.compile(loss= ut.bce_inv, optimizer='adam', metrics=['accuracy'])
+            #Fit the model
+            model.fit(X_trainr, np.ravel(y_proba_tr), epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-            err_tpd.append(1-accuracy_score(y_test, y_pre))
+            err_bci.append(1-accuracy_score(y_test, y_pre))
+            
             
 
             tf.keras.backend.clear_session()
@@ -225,7 +269,7 @@ for ind in text:
            'err_up':np.round(np.mean(err_up), 4),
            'err_b':  np.round(np.mean(err_b), 4),
            'err_GD': np.round(np.mean(err_gd), 4),
-           'err_PFD': np.round(np.mean(err_pfd), 4),
+           'err_BCI': np.round(np.mean(err_pfd), 4),
            'err_TPD': np.round(np.mean(err_tpd), 4),
            'LUPIGD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_gd), 4)),
            'LUPIPFD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_pfd), 4)),
@@ -244,8 +288,10 @@ for ind in text:
 #lc = '-'.join(str_clas)
 
 #dff.to_csv(v + '_' + lr + '_' + lc + '_' + str(drp) + '_' + str(es) + '_' + str(epo) + '_' + str(bs) + '_' + str(n_samples) + '_' + str(alpha) + '_' + str(n_iter)+ '.csv')
-    
-        
+
+
+
+
 
 
 
@@ -280,21 +326,6 @@ def loss_GD(T, l):
 
 
 
-def loss_TPD(T, beta):
-    def loss(y_true, y_pred):
-        y_tr = y_true[:, 0]
-        y_prob = y_true[:, 1]
-        d = y_true[:, 2]
-        
-        ft = (-tf.math.log(1/y_prob - 1 + 1e-6)) / T
-        y_pr = 1 / (1 + tf.exp(-ft))
-        #BCE instance by instance
-        bce = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-        bce_inst = bce(y_prob, y_pred )
-    
-        #tf.print(tf.math.multiply(1-d,bce_inst))
-        #print(tf.math.multiply(d,bce_inst).numpy() - tf.math.multiply(1-d, bce_inst).numpy())
-        #print(np.mean(np.array(tf.math.multiply(d,bce_inst))- np.array(tf.math.multiply(1-d,bce_inst))))
-        #tf.print(tf.reduce_mean(tf.math.multiply(d,bce_inst) - tf.math.multiply(1-d, bce_inst)))
-        return tf.reduce_mean(tf.math.multiply(d,bce_inst) - tf.math.multiply(1-d, bce_inst)) 
-    return loss
+def bce_inv(y_true, y_pred):
+    bcei = tf.keras.losses.BinaryCrossentropy()(y_prob, y_pred)
+    return bcei

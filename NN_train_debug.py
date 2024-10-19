@@ -31,11 +31,13 @@ import argparse
 
 
 # %%
-text    = ['phishing'] 
-dataset = [ dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.phoneme(), dat.magictelescope(),  dat.mozilla4()]
+text    = ['phishing', 'obesity', 'diabetes', 'wm', 'phoneme', 'magic_telescope', 'mozilla', 'mnist_r', 'fruit', 'mnist_g'] 
+dataset = [ dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.phoneme(), dat.magictelescope(),  dat.mozilla4(), dat.mnist_r(), dat.fruit(), dat.mnist_g()]
 datasets_dict = dict(zip(text, dataset))
 
-
+text    = ['obesity'] 
+dataset = [ dat.obesity(from_csv = True)]
+datasets_dict = dict(zip(text, dataset))
 # NN architectures of the regressor and the classifier
 lay_reg  = []      #Layers for the regressor
 lay_clas = []      #Layers for the classifier
@@ -61,21 +63,32 @@ dff = pd.DataFrame()  #Dataframe to store the results of each dataset
 
 
 
+
 # %%
 
 #Process each dataset
-for ind in text:
+for ind in args.dataset:
     t = ind #text of the current dataset
 
     #Retrieve the current dataset and extract the privileged feature
-    X, y = datasets_dict[ind]
-    pi_features = ut.feat_correlation(X,y)
+
+    if t in [ 'mnist_r', 'fruit', 'mnist_g']:
+        X, y, pi_features = datasets_dict[ind]
+        X = X/255
+    else:
+        X, y = datasets_dict[ind]
+        pi_features = ut.feat_correlation(X,y)
+
+    X = X.sample(frac = 1)
+    ind = X.index
+    X = X.reset_index(drop = True)
+    y = y[ind].reset_index(drop = True)
 
     #Number of folds
     cv = 5
     
     #Create a list to save the results 
-    err_up, err_b, err1, per1, err2, per2, mae1, mae2= [[] for i in range(8)]
+    err_up, err_b = [[] for i in range(2)]
     err_up_priv, err_gd, err_pfd, err_tpd = [[] for i in range(4)]
     #For each fold (k is the random seed of each fold)
     for k in ran:
@@ -88,10 +101,10 @@ for ind in text:
             X_train, y_train, X_test, y_test  = ut.train_test_fold(dr, h)
             
             #Preprocess the data
-            SS = StandardScaler()
-            X_train = pd.DataFrame(SS.fit_transform(X_train), columns = X_train.columns)
-            X_test = pd.DataFrame(SS.transform(X_test), columns = X_train.columns)
-        
+            if t not in [ 'mnist_r', 'fruit', 'mnist_g']:
+                SS = StandardScaler()
+                X_train = pd.DataFrame(SS.fit_transform(X_train), columns = X_train.columns)
+                X_test = pd.DataFrame(SS.transform(X_test), columns = X_train.columns)
             # Get the privileged feature
             pri = X_train[pi_features]
             pri_test = X_test[pi_features]
@@ -149,15 +162,26 @@ for ind in text:
             
             #Create the model 
             
-            
+            X_trainr = X_trainr.sample(frac = 1)
+            ind = X_trainr.index
+            X_trainr = X_trainr.reset_index(drop = True)
+            y_train = y_train[ind].reset_index(drop = True)
+
+
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)
-            model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
-            mo.fit_model(model, X_trainr, y_train, 1000, bs, vs, False, pat)
+            model.compile(loss='binary_crossentropy', optimizer="sgd", metrics=['accuracy'])
+            mo.fit_model(model, X_trainr, y_train, 1000, 32, 0.33, True, pat)
             #Measure test error
             y_pre_b = np.ravel([np.round(i) for i in model.predict(X_testr)])
 
             err_b.append(1-accuracy_score(y_test, y_pre_b))
             print('B', 1-accuracy_score(y_test, y_pre_b))
+
+
+            lr = LogisticRegression()
+            lr.fit(X_trainr, y_train)
+            pre = lr.predict(X_testr)
+            print(1-accuracy_score(pre, y_test))
 
         
             
@@ -222,15 +246,22 @@ for ind in text:
     
     #Save the results
     off = {'name' : t,
-           'err_up':np.round(np.mean(err_up), 4),
-           'err_b':  np.round(np.mean(err_b), 4),
-           'err_GD': np.round(np.mean(err_gd), 4),
-           'err_PFD': np.round(np.mean(err_pfd), 4),
-           'err_TPD': np.round(np.mean(err_tpd), 4),
-           'LUPIGD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_gd), 4)),
-           'LUPIPFD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_pfd), 4)),
-           'LUPITPD %': ut.LUPI_gain(np.round(np.mean(err_up), 4),  np.round(np.mean(err_b), 4), np.round(np.mean(err_tpd), 4))
-           }   
+           'tp':np.round(np.mean(err_up_priv), 3),
+           'tpr':np.round(np.mean(err_up), 3),
+           'base':  np.round(np.mean(err_b), 3),
+           'GD': np.round(np.mean(err_gd), 3),
+           'PFD': np.round(np.mean(err_pfd), 3),
+           'TPD': np.round(np.mean(err_tpd), 3),
+           'LUPIGD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up_priv), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_gd), 3)),1),
+           'LUPIPFD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_pfd), 3)),1),
+           'LUPITPD %': np.round(ut.LUPI_gain(np.round(np.mean(err_up), 3),  np.round(np.mean(err_b), 3), np.round(np.mean(err_tpd), 3)),1),
+           'std_tp':np.round(np.std(err_up_priv), 3),
+           'std_tpr':np.round(np.std(err_up), 3),
+           'std_b':  np.round(np.std(err_b), 3),
+           'std_GD': np.round(np.std(err_gd), 3),
+           'std_PFD': np.round(np.std(err_pfd), 3),
+           'std_TPD': np.round(np.std(err_tpd), 3)
+           }    
     
     df1 = pd.DataFrame(off, index = [0])
         
@@ -292,9 +323,6 @@ def loss_TPD(T, beta):
         bce = tf.keras.losses.BinaryCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
         bce_inst = bce(y_prob, y_pred )
     
-        #tf.print(tf.math.multiply(1-d,bce_inst))
-        #print(tf.math.multiply(d,bce_inst).numpy() - tf.math.multiply(1-d, bce_inst).numpy())
-        #print(np.mean(np.array(tf.math.multiply(d,bce_inst))- np.array(tf.math.multiply(1-d,bce_inst))))
-        #tf.print(tf.reduce_mean(tf.math.multiply(d,bce_inst) - tf.math.multiply(1-d, bce_inst)))
+
         return tf.reduce_mean(tf.math.multiply(d,bce_inst) - tf.math.multiply(1-d, bce_inst)) 
     return loss
