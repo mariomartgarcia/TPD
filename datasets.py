@@ -59,7 +59,7 @@ def breast_cancer():
     y = df_bc['output']
     
     return X, y
-
+'''
 #--------------------------------------------------------
 #4. DRY BEAN | (13611x16) | 7 Classes
 
@@ -106,7 +106,7 @@ def abalone():
     y = pd.Series((y.Rings>9)*1)
 
     return X, y
-
+'''
 
 #--------------------------------------------------------
 #8. PEN-BASED | (10992x16)  | Multiclase 9 
@@ -157,7 +157,7 @@ def obesity(from_csv=False):
         df = pd.read_csv('data/obesity.csv', sep = ',')
     else:
         # fetch dataset 
-        obesity_data = fetch_ucirepo(id=544) 
+        #obesity_data = fetch_ucirepo(id=544) 
         
         # data (as pandas dataframes) 
         X = obesity_data.data.features 
@@ -468,7 +468,7 @@ def mnist3x3():
 
 
 
-
+'''
 #--------------------------------------------------------
 #27. IONOSPHERE
 def ionosphere():
@@ -480,7 +480,7 @@ def ionosphere():
     pi_features = ['Attribute5', 'Attribute6', 'Attribute21', 'Attribute22']
     
     return X, y, pi_features
-
+'''
 
 #--------------------------------------------------------
 #28. kc2
