@@ -148,7 +148,7 @@ for ind in args.dataset:
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification(pri.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
+            model =  mo.nn_binary_clasification(1, lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -286,7 +286,7 @@ v = '_'.join(args.dataset)
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-dff.to_csv('imi0.5' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
+dff.to_csv('fimi0.5' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
     
         
 
