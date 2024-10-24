@@ -34,9 +34,8 @@ import argparse
 #python NN_train_parser.py -dataset obesity  -no-drp  -es -epo 100 -bs 32 -samp 100 -uncert 0.3 -iter 1
 #python NN_train_parser.py -dataset phishing obesity diabetes wm  -l_reg 10 20 -l_clas 10 20 -drp  -es -epo 200 -bs 32 -samp 100 -uncert 0.3 -iter 20
 
-#python NN_train.py -dataset obesity  -no-drp -epo 100 -bs 32 -pat 20 -no-regu -l2regu 1 -iter 10
-#python NN_train.py -dataset phishing obesity diabetes wm phoneme  -no-drp  -es -epo 1000 -bs 32 -no-regu -l2regu 1 -iter 10
 
+#python NN_train.py -dataset obesity  -no-drp -epo 1 -bs 32 -imi 0.5 -pat 20 -no-regu -l2regu 1 -iter 1
 
 parser = argparse.ArgumentParser()
 # Define arguments
@@ -48,7 +47,7 @@ parser.add_argument("-no-drp", dest = "drp", action='store_false')
 #parser.add_argument("-no-es", dest = "es", action='store_false')
 parser.add_argument("-epo", dest = "epo", type = int)
 parser.add_argument("-bs", dest = "bs", type = int)
-
+parser.add_argument("-imi", dest = "imi", type = float)
 parser.add_argument("-pat", dest = "pat", type = int)
 parser.add_argument("-regu", dest = "regu", action='store_true')
 parser.add_argument("-no-regu", dest = "regu", action='store_false')
@@ -71,12 +70,12 @@ lay_clas = args.l_clas      #Layers for the classifier
 drp = args.drp     #Dropout False
 epo = args.epo     #Epochs 100
 bs = args.bs       #Batch Size 32
-vs = 0.33          #Validation Split
+vs = 0.15          #Validation Split
 #es = args.es      #Early Stopping True
 pat = args.pat           #Patience
 
 temperature = 1    #Temperature privileged distillation algorithms
-imitation = 0.5    #Imitation parameters
+imitation = args.imi   #Imitation parameters
 beta = 1           #Weight od misclassifications TPD
 
 #Regularization
@@ -90,7 +89,22 @@ ran = np.random.randint(1000, size = n_iter)
 
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset
 
-
+'''
+text = ['diabetes']
+lay_clas = [20,20]
+epo = 300
+bs = 128
+vs = 0.15
+pat = 20
+temperature = 1
+imitation = 0.5
+beta = 1
+regu = False
+l2regu = 0
+n_iter = 1
+ran = np.random.randint(1000, size = n_iter)
+drp = False
+'''
 
 # %%
 
@@ -120,6 +134,7 @@ for ind in args.dataset:
     err_up_priv, err_gd, err_pfd, err_tpd = [[] for i in range(4)]
     #For each fold (k is the random seed of each fold)
     for k in ran:
+        
         #Create a dictionary with all the fold partitions
         dr = ut.skfold(X, pd.Series(list(y)), cv, r = k, name = 'stratified')
     
@@ -127,7 +142,7 @@ for ind in args.dataset:
         for h in range(cv):
             #Get the current partition
             X_train, y_train, X_test, y_test  = ut.train_test_fold(dr, h)
-            
+            print('hey')
             #Preprocess the data
             if t not in ['mnist_r', 'fruit', 'mnist_g']:
                 SS = StandardScaler()
@@ -148,7 +163,7 @@ for ind in args.dataset:
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification(1, lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)   
+            model =  mo.nn_binary_clasification(1, lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)   
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -165,7 +180,7 @@ for ind in args.dataset:
             #UPPER (REGULAR + PRIV)
             #----------------------------------------------------------
             #Create the model 
-            model =  mo.nn_binary_clasification( X_train.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
+            model =  mo.nn_binary_clasification( X_train.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
             model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -186,7 +201,7 @@ for ind in args.dataset:
             #Create the model 
             
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)  
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)  
             model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
             #mo.fit_model(model, X_trainr, y_train, epo, bs, vs, es, pat)
             model.fit(X_trainr, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
@@ -205,7 +220,7 @@ for ind in args.dataset:
             yy_GD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr_p)])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
             model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
             
             #Fit the model
@@ -225,7 +240,7 @@ for ind in args.dataset:
             yy_PFD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr)])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
             model.compile(loss= ut.loss_GD(temperature, imitation), optimizer='adam', metrics=['accuracy'])
             
             #Fit the model
@@ -243,7 +258,7 @@ for ind in args.dataset:
             delta_i = np.array((y_train == np.round(np.ravel(y_proba_tr)))*1)
             yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
             
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = False, l2 = 1)     
+            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
             model.compile(loss= ut.loss_TPD(temperature, beta), optimizer='adam', metrics=['accuracy'])
    
             #Fit the model
@@ -254,6 +269,10 @@ for ind in args.dataset:
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
             err_tpd.append(1-accuracy_score(y_test, y_pre))
+
+            #last_loss = history.history['loss'][-1]
+            #last_val_loss = history.history['val_loss'][-1]
+            #print(len(history.history['loss']), last_loss, last_val_loss)
             
            
             tf.keras.backend.clear_session()
@@ -286,10 +305,7 @@ v = '_'.join(args.dataset)
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-dff.to_csv('fimi0.5' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
+dff.to_csv('vs0.15_' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat) + '_' +  str(imitation)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
     
-        
-
-
 
 # %%

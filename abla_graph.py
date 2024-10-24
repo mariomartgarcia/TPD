@@ -21,7 +21,7 @@ import numpy as np
 # %%
 
 
-df = pd.read_csv('abla_obesity_phishing__False_1_500_20_False_1.0_1.csv', index_col = [0])
+df = pd.read_csv('abla_phishing_obesity_diabetes_wm_phoneme_magic_telescope_mozilla__False_1000_32_20_False_1.0_5.csv', index_col = [0])
 
 
 import matplotlib.pyplot as plt

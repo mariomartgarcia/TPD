@@ -107,7 +107,7 @@ dff = pd.DataFrame()  #Dataframe to store the results of each dataset
 def synthetic(n, l, a, noise_priv):
     Xr = np.random.randn(n, len(a))
     Xpr = np.random.randn(n)
-    Xp = np.dot(Xr,a) + 0.5*np.random.randn(n)
+    Xp = np.random.randn(n)
     y = pd.Series(((l*Xp + (1-l)*Xpr + noise_priv*np.random.randn(n)) > 0)*1)
     Xr = pd.DataFrame(Xr, columns =['Xr1', 'Xr2'])
     Xp = pd.DataFrame({'Xpr': Xpr, 'Xp': Xp})
@@ -291,7 +291,7 @@ for l in [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-dff.to_csv('synth' + '_'  + lc + '_' + str(n_tr) + '_' + str(n_test) + '_' + str(noise_priv) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(n_iter)+ '.csv')
+dff.to_csv('synth_ran' + '_'  + lc + '_' + str(n_tr) + '_' + str(n_test) + '_' + str(noise_priv) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat)  + '_' + str(n_iter)+ '.csv')
     
         
 

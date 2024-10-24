@@ -93,10 +93,40 @@ beta_val = [0.5, 1, 2, 5, 10, 20, 50]
 
 
 
+
+# NN architectures of the regressor and the classifier
+lay_clas = []
+drp = False
+epo = 2
+bs = 500
+vs = 0.33
+pat = 20
+temperature = 1    #Temperature privileged distillation algorithms
+imitation = 0.5    #Imitation parameters
+beta = 1           #Weight od misclassifications TPD
+regu = False
+l2regu = 0
+n_iter  = 1
+ran = np.random.randint(1000, size = n_iter)
+
+
+beta_val = [0.5, 1]
+temp_val = [1,2]
+
+
 # %%
 
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
+##OJOOOOOOOOOOOOOO ars.dataset
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
+##---------------------------------------------------------------------
 #Process each dataset
-for ind in args.dataset:
+for ind in ['obesity']:
     t = ind #text of the current dataset
 
     #Retrieve the current dataset and extract the privileged feature
@@ -114,6 +144,8 @@ for ind in args.dataset:
     #Create a list to save the results 
     err_up, err_b = [[] for i in range(2)]
     err_up_priv, err_gd, err_pfd, err_tpd, err_bci = [[] for i in range(5)]
+
+    df_TB = pd.DataFrame()
     #For each fold (k is the random seed of each fold)
     for k in ran:
         #Create a dictionary with all the fold partitions
@@ -197,81 +229,94 @@ for ind in args.dataset:
             #---------------------------------------------------------- 
             #### GD
             #### ---------------------------------------------------------- 
-            yy_GD = np.column_stack([np.ravel(y_train), 
-                               np.ravel(y_proba_tr_p)])
-            
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
-            
-            #Fit the model
-            #mo.fit_model(model, X_trainr, yy_GD, epo, bs, vs, es, pat)
-            model.fit(X_trainr, yy_GD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
-            
-            #Measure test error
-            y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-            err_gd.append(1-accuracy_score(y_test, y_pre))
-            
-            
+            err_abla1, err_abla2, err_abla3 = [[] for i in range(3)]
 
-            #### ---------------------------------------------------------- 
-            #### PFD
-            #### ---------------------------------------------------------- 
-            yy_PFD = np.column_stack([np.ravel(y_train), 
-                               np.ravel(y_proba_tr)])
-            
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer='adam', metrics=['accuracy'])
-            
-            #Fit the model
-            #mo.fit_model(model, X_trainr, yy_PFD, epo, bs, vs, es, pat)
-            model.fit(X_trainr, yy_PFD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
-            
-            #Measure test error
-            y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-            err_pfd.append(1-accuracy_score(y_test, y_pre))          
 
-            
-            #### TPD
-            #### ---------------------------------------------------------- 
-            delta_i = np.array((y_train == np.round(np.ravel(y_proba_tr)))*1)
-            yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
-            
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            
-            err_abla = []
-            for b in beta_val:
-                model.compile(loss= ut.loss_TPD(temperature, b), optimizer='adam', metrics=['accuracy'])
+            for q in temp_val:
+
+                yy_GD = np.column_stack([np.ravel(y_train), 
+                                np.ravel(y_proba_tr_p)])
+                
+                model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+                model.compile(loss= ut.loss_GD(q, imitation), optimizer= 'adam', metrics=['accuracy'])
+                
                 #Fit the model
-                model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                #mo.fit_model(model, X_trainr, yy_GD, epo, bs, vs, es, pat)
+                model.fit(X_trainr, yy_GD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                            callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                
+                #Measure test error
+                y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
+                err_abla1.append(1-accuracy_score(y_test, y_pre))
+                
+            
+
+                #### ---------------------------------------------------------- 
+                #### PFD
+                #### ---------------------------------------------------------- 
+                yy_PFD = np.column_stack([np.ravel(y_train), 
+                                np.ravel(y_proba_tr)])
+                
+                model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+                model.compile(loss= ut.loss_GD(temperature, imitation), optimizer='adam', metrics=['accuracy'])
+                
+                #Fit the model
+                #mo.fit_model(model, X_trainr, yy_PFD, epo, bs, vs, es, pat)
+                model.fit(X_trainr, yy_PFD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                            callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                
+                #Measure test error
+                y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
+                err_abla2.append(1-accuracy_score(y_test, y_pre))          
+
+            
+                #### TPD
+                #### ---------------------------------------------------------- 
+                delta_i = np.array((y_train == np.round(np.ravel(y_proba_tr)))*1)
+                yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
+                
+                model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
+                
+                
+                for b in beta_val:
+                    model.compile(loss= ut.loss_TPD(temperature, b), optimizer='adam', metrics=['accuracy'])
+                    #Fit the model
+                    model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
+                            callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                    #Measure test error
+                    y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
+                    err_abla3.append(1-accuracy_score(y_test, y_pre))
+            
+                '''
+                #BCI
+                ###-----------------------------------------------------------------
+
+                model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)   
+
+                model.compile(loss= ut.bce_inv, optimizer='adam', metrics=['accuracy'])
+                #Fit the model
+                model.fit(X_trainr, np.ravel(y_proba_tr), epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
                         callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
                 #Measure test error
                 y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-                err_abla.append(1-accuracy_score(y_test, y_pre))
-
+                err_bci.append(1-accuracy_score(y_test, y_pre))
+                '''
             if len(err_tpd) == 0:
-                err_tpd = err_abla
+                err_gd = err_abla1
+                err_pfd = err_abla2
+                err_tpd = err_abla3
+
             else:
-                err_tpd = np.vstack([err_tpd, err_abla])
+                err_pfd = np.vstack([err_pfd, err_abla1])
+                err_gd = np.vstack([err_gd, err_abla2])
+                err_tpd = np.vstack([err_tpd, err_abla3])
 
 
-        
+
+
+
+                
             
-            #BCI
-            ###-----------------------------------------------------------------
-
-            model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp)   
-
-            model.compile(loss= ut.bce_inv, optimizer='adam', metrics=['accuracy'])
-            #Fit the model
-            model.fit(X_trainr, np.ravel(y_proba_tr), epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                    callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
-            #Measure test error
-            y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
-            err_bci.append(1-accuracy_score(y_test, y_pre))
-            
-           
             tf.keras.backend.clear_session()
     
     #Save the results
@@ -279,25 +324,27 @@ for ind in args.dataset:
            'tp':np.round(np.mean(err_up_priv), 3),
            'tpr':np.round(np.mean(err_up), 3),
            'base':  np.round(np.mean(err_b), 3),
-           'GD': np.round(np.mean(err_gd), 3),
-           'PFD': np.round(np.mean(err_pfd), 3),
-           'TPD': np.round(np.mean(err_tpd), 3),
            'std_tp':np.round(np.std(err_up_priv), 3),
            'std_tpr':np.round(np.std(err_up), 3),
-           'std_b':  np.round(np.std(err_b), 3),
-           'std_GD': np.round(np.std(err_gd), 3),
-           'std_PFD': np.round(np.std(err_pfd), 3),
-           'std_TPD': np.round(np.std(err_tpd), 3)        
+           'std_b':  np.round(np.std(err_b), 3),    
             }   
     
-    for q, k in enumerate(beta_val):
-        off['beta'+str(k)] =  np.mean(err_tpd, axis = 0)[q]
-        off['std_beta'+str(k)] =  np.std(err_tpd, axis = 0)[q]
+    for q, k in enumerate(temp_val):
+        off['PFD'+str(k)] =  np.mean(err_pfd, axis = 0)[q]
+        off['std_PFD'+str(k)] =  np.std(err_pfd, axis = 0)[q]
+        off['GD'+str(k)] =  np.mean(err_gd, axis = 0)[q]
+        off['std_GD'+str(k)] =  np.std(err_gd, axis = 0)[q]
 
 
     df1 = pd.DataFrame(off, index = [0])
         
     dff  = pd.concat([dff, df1]).reset_index(drop = True)
+
+
+    df_TB = pd.DataFrame(list(itertools.product(temp_val, beta_val)), columns = ['T', 'b'])
+    df_TB['name'] = t
+    df_TB['err_TPD'] = np.mean(err_tpd, axis = 0)
+    df_TB['std_TPD'] = np.std(err_tpd, axis = 0)
 
 #layers, Iteraciones, dropout, earlystopping, uncertainty threshold y sampling
 v = '_'.join(args.dataset)

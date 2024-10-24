@@ -125,13 +125,15 @@ def data(expe, a, n):
     pi_features = list(np.arange(0, x_pri.shape[1] ))
     return X, y, pi_features
 
+
+
 # %%
 
 #Process each dataset
 for ind in [synthetic_01, synthetic_03]:
     t = str(ind) #text of the current dataset
-    n_tr = 20
-    n_test = 100
+    n_tr = 200
+    n_test = 10000
 
     #Create a list to save the results 
     err_up, err_b = [[] for i in range(2)]
@@ -143,6 +145,7 @@ for ind in [synthetic_01, synthetic_03]:
         X_train, y_train, pi_features = data(ind, a, n_tr)
         X_test, y_test, pi_features = data(ind, a, n_test)
 
+
         # Get the privileged feature
         pri = X_train[pi_features]
         pri_test = X_test[pi_features]
@@ -150,6 +153,7 @@ for ind in [synthetic_01, synthetic_03]:
         #Drop the privileged feature from the train set
         X_trainr = X_train.drop(pi_features, axis = 1)
         X_testr = X_test.drop(pi_features, axis = 1)
+
         
         #TRAIN THE THREE MAIN MODELS: UPPER, LOWER AND PRIVILEGED
         ###########################################################
