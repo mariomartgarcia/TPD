@@ -90,13 +90,13 @@ ran = np.random.randint(1000, size = n_iter)
 
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset
 
-'''
+
 text = ['phoneme']
-lay_clas = [5]
-epo = 500
+lay_clas = [20,20]
+epo = 1000
 bs = 128
-vs = 0.2
-pat = 25
+vs = 0.15
+pat = 5
 temperature = 1
 imitation = 0.5
 beta = 1
@@ -105,19 +105,24 @@ l2regu = 0
 n_iter = 1
 ran = np.random.randint(1000, size = n_iter)
 drp = False
-import random
-'''
+
+
+# Define a custom learning rate schedule function
+
+initial_lr = 0.001 
+def lr_schedule(epoch, lr):
+    if epoch > 0 and epoch % 100 == 0:
+        return lr * 0.1
+    return lr
+
+# Create the Adam optimizer with the initial learning rate
+optimizer = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
 
 # %%
 
-# Fix random seeds for reproducibility
-seed_value = 42
-np.random.seed(seed_value)
-tf.random.set_seed(seed_value)
-random.seed(seed_value)
-
 #Process each dataset
-for ind in args.dataset:
+for ind in text:
     t = ind #text of the current dataset
 
     #Retrieve the current dataset and extract the privileged feature
@@ -168,20 +173,19 @@ for ind in args.dataset:
             #TRAIN THE THREE MAIN MODELS: UPPER, LOWER AND PRIVILEGED
             ###########################################################
 
-  
-
-
-
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
             model =  mo.nn_binary_clasification(1, lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)   
-            model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+            model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['accuracy'])
             
             #Fit the model
             #mo.fit_model(model, pri, y_train, epo, bs, vs, es, pat)
             model.fit(pri, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(pri_test)])
@@ -192,13 +196,17 @@ for ind in args.dataset:
             #UPPER (REGULAR + PRIV)
             #----------------------------------------------------------
             #Create the model 
+
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
             model =  mo.nn_binary_clasification( X_train.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+            model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['accuracy'])
             
             #Fit the model
             #mo.fit_model(model, X_train, y_train, epo, bs, vs, es, pat)
             model.fit(X_train, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
             
             #Measure test error
             y_pre_up = np.ravel([np.round(i) for i in model.predict(X_test)])
@@ -211,13 +219,14 @@ for ind in args.dataset:
             #----------------------------------------------------------
             
             #Create the model 
-            
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)            
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)  
-            model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
+            model.compile(loss='binary_crossentropy', optimizer=optim, metrics=['accuracy'])
             #mo.fit_model(model, X_trainr, y_train, epo, bs, vs, es, pat)
             model.fit(X_trainr, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
 
 
             #Measure test error
@@ -229,16 +238,19 @@ for ind in args.dataset:
             #---------------------------------------------------------- 
             #### GD
             #### ---------------------------------------------------------- 
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
             yy_GD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr_p)])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= 'adam', metrics=['accuracy'])
+            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer= optim, metrics=['accuracy'])
             
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_GD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_GD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -249,16 +261,19 @@ for ind in args.dataset:
             #### ---------------------------------------------------------- 
             #### PFD
             #### ---------------------------------------------------------- 
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
             yy_PFD = np.column_stack([np.ravel(y_train), 
                                np.ravel(y_proba_tr)])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer='adam', metrics=['accuracy'])
+            model.compile(loss= ut.loss_GD(temperature, imitation), optimizer=optim, metrics=['accuracy'])
             
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_PFD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_PFD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -267,16 +282,19 @@ for ind in args.dataset:
             
             #### TPD
             #### ---------------------------------------------------------- 
+            optim = tf.keras.optimizers.Adam(learning_rate=initial_lr)
+            lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
             delta_i = np.array((y_train == np.round(np.ravel(y_proba_tr)))*1)
             yy_TPD = np.column_stack([np.ravel(y_train), np.ravel(y_proba_tr), delta_i])
             
             model =  mo.nn_binary_clasification( X_trainr.shape[1], lay_clas, 'relu', dropout = drp, regularization = regu, l2 = l2regu)     
-            model.compile(loss= ut.loss_TPD(temperature, beta), optimizer='adam', metrics=['accuracy'])
+            model.compile(loss= ut.loss_TPD_gt(temperature, beta), optimizer=optim, metrics=['accuracy'])
    
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_TPD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat), lr_scheduler])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -317,7 +335,7 @@ v = '_'.join(args.dataset)
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-#dff.to_csv('ff_' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat) + '_' +  str(imitation)  + '_' +  str(vs)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
+dff.to_csv('ff_' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat) + '_' +  str(imitation)  + '_' +  str(vs)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
     
 
 # %%

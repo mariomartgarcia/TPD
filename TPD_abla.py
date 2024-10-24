@@ -58,16 +58,16 @@ def skfold(X, y, n, r = 0, name = 'stratified', ts = None):
 ran= np.random.randint(1000, size = 30)
 
 
-text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4' ]
-dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4()]
+#text  =  ['mu_284', 'phishing', 'obesity', 'diabetes', 'wm', 'magictelescope', 'phoneme', 'mozilla4' ]
+#dataset = [ dat.mu_284(), dat.phishing(from_csv = True), dat.obesity(from_csv = True), dat.diabetes(), dat.wm() , dat.magictelescope(), dat.phoneme(), dat.mozilla4()]
 
 #text  =  ['phoneme', 'mozilla4']
 #dataset = [  dat.phoneme(), dat.mozilla4()]
 
 
 
-#text  = [ 'mnist_r', 'fruit', 'mnist_g' ] #, 'mozilla4']
-#dataset = [   dat.mnist_r(), dat.fruit(), dat.mnist_g()] 
+text  = [ 'mnist_r', 'fruit', 'mnist_g' ] #, 'mozilla4']
+dataset = [   dat.mnist_r(), dat.fruit(), dat.mnist_g()] 
 
 #text  = [ 'phishing']
 #dataset = [dat.phishing(from_csv = True)]
@@ -292,14 +292,17 @@ for index, datt in enumerate(dataset):
     df_tpd = pd.concat([df_tpd, df_TB])
 
 
-df_lr.to_csv('30_temp_lr.csv')
-df_tpd.to_csv('30_tpd_beta_temp_lr.csv')
+df_lr.to_csv('30_ima_temp_lr.csv')
+df_tpd.to_csv('30_ima_tpd_beta_temp_lr.csv')
 #df_meta.to_csv('feasibility_meta.csv')
 #---------------------------------------------------------------------------------------------
+
+
 # %%
 
-df = pd.read_csv('10_temp_lr.csv', index_col = [0])
-df_tpd = pd.read_csv('10_tpd_beta_temp_lr.csv', index_col = [0])
+
+df = pd.read_csv('30_temp_lr.csv', index_col = [0])
+df_tpd = pd.read_csv('30_tpd_beta_temp_lr.csv', index_col = [0])
 
 
 
@@ -447,4 +450,16 @@ df_bcei = pd.DataFrame(off)
 
 
 # %%
-'''
+full = df[['name', 'tp', 'tpr', 'base', 'PFD1', 'std_PFD1', 'GD1', 'std_GD1']]
+full['err_TPD'] = df_tpd[(df_tpd['T'] == 1) & (df_tpd['b'] == 1)]['err_TPD'].reset_index(drop = True)
+full['std_TPD'] = df_tpd[(df_tpd['T'] == 1) & (df_tpd['b'] == 1)]['std_TPD'].reset_index(drop = True)
+full = np.round(full,3)
+
+def LUPI_gain(ub, lb, x):
+        return ((x - lb) / (ub - lb) )*100
+
+
+full['LG_pfd'] = np.round(LUPI_gain(full['tpr'], full['base'], full['PFD1']),2)
+full['LG_gd']  = np.round(LUPI_gain(full['tp'], full['base'],  full['GD1']),2)
+full['LG_tpd']  = np.round(LUPI_gain(full['tpr'], full['base'], full['err_TPD']), 2)
+

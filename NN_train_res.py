@@ -91,12 +91,12 @@ ran = np.random.randint(1000, size = n_iter)
 dff = pd.DataFrame()  #Dataframe to store the results of each dataset
 
 '''
-text = ['phoneme']
-lay_clas = [5]
-epo = 500
+text = ['diabetes']
+lay_clas = []
+epo = 10
 bs = 128
-vs = 0.2
-pat = 25
+vs = 0.15
+pat = 20
 temperature = 1
 imitation = 0.5
 beta = 1
@@ -110,11 +110,6 @@ import random
 
 # %%
 
-# Fix random seeds for reproducibility
-seed_value = 42
-np.random.seed(seed_value)
-tf.random.set_seed(seed_value)
-random.seed(seed_value)
 
 #Process each dataset
 for ind in args.dataset:
@@ -169,9 +164,6 @@ for ind in args.dataset:
             ###########################################################
 
   
-
-
-
             #UPPER (PRIV)
             #----------------------------------------------------------
             #Create the model 
@@ -181,7 +173,7 @@ for ind in args.dataset:
             #Fit the model
             #mo.fit_model(model, pri, y_train, epo, bs, vs, es, pat)
             model.fit(pri, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(pri_test)])
@@ -198,7 +190,7 @@ for ind in args.dataset:
             #Fit the model
             #mo.fit_model(model, X_train, y_train, epo, bs, vs, es, pat)
             model.fit(X_train, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
             
             #Measure test error
             y_pre_up = np.ravel([np.round(i) for i in model.predict(X_test)])
@@ -217,7 +209,7 @@ for ind in args.dataset:
             model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
             #mo.fit_model(model, X_trainr, y_train, epo, bs, vs, es, pat)
             model.fit(X_trainr, y_train, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
 
 
             #Measure test error
@@ -238,7 +230,7 @@ for ind in args.dataset:
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_GD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_GD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -258,7 +250,7 @@ for ind in args.dataset:
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_PFD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_PFD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -276,7 +268,7 @@ for ind in args.dataset:
             #Fit the model
             #mo.fit_model(model, X_trainr, yy_TPD, epo, bs, vs, es, pat)
             model.fit(X_trainr, yy_TPD, epochs=epo, batch_size=bs, verbose = 0, validation_split = vs,
-                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat)])
+                        callbacks=[tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = pat, restore_best_weights=True)])
             
             #Measure test error
             y_pre = np.ravel([np.round(i) for i in model.predict(X_testr)])
@@ -317,7 +309,7 @@ v = '_'.join(args.dataset)
 str_clas = [str(i) for i in args.l_clas]
 lc = '-'.join(str_clas)
 
-#dff.to_csv('ff_' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat) + '_' +  str(imitation)  + '_' +  str(vs)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
+dff.to_csv('restor_' + v + '_'  + lc + '_' + str(drp) + '_' + str(epo) + '_' + str(bs)  + '_' +  str(pat) + '_' +  str(imitation)  + '_' +  str(vs)  + '_' + str(regu) + '_' + str(l2regu) + '_' + str(n_iter)+ '.csv')
     
 
 # %%
